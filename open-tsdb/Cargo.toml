@@ -1,0 +1,8 @@
+[package]
+name = "open-tsdb"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+slatedb.workspace = true
+opendata-common.workspace = true

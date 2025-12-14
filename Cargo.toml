@@ -1,0 +1,15 @@
+[workspace]
+resolver = "2"
+members = [
+    "opendata-common",
+    "open-tsdb",
+    "open-log",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+
+[workspace.dependencies]
+slatedb = "0.9.1"
+opendata-common = { path = "./opendata-common" }
