@@ -26,6 +26,39 @@ impl MetricMeta {
     }
 }
 
+impl From<MetricType> for MetricMeta {
+    fn from(metric_type: MetricType) -> Self {
+        let (metric_type_val, temporality, monotonic) = match metric_type {
+            MetricType::Gauge => (1, Temporality::Unspecified, false),
+            MetricType::Sum {
+                monotonic,
+                temporality,
+            } => (2, temporality, monotonic),
+            MetricType::Histogram { temporality } => (3, temporality, false),
+            MetricType::ExponentialHistogram { temporality } => (4, temporality, false),
+            MetricType::Summary => (5, Temporality::Unspecified, false),
+        };
+
+        // Encode temporality in bits 0-1
+        let temporality_bits = match temporality {
+            Temporality::Unspecified => 0,
+            Temporality::Cumulative => 1,
+            Temporality::Delta => 2,
+        };
+
+        // Encode monotonic flag in bit 2 (only meaningful for Sum, but we set it for all)
+        let monotonic_bit = if monotonic { 0x04 } else { 0x00 };
+
+        // Combine flags: bits 0-1 = temporality, bit 2 = monotonic, bits 3-7 = reserved (must be zero)
+        let flags = temporality_bits | monotonic_bit;
+
+        MetricMeta {
+            metric_type: metric_type_val,
+            flags,
+        }
+    }
+}
+
 impl Encode for MetricMeta {
     fn encode(&self, buf: &mut BytesMut) {
         buf.extend_from_slice(&[self.metric_type, self.flags]);

@@ -1656,6 +1656,7 @@ dependencies = [
  "slatedb",
  "tokio",
  "tracing",
+ "uuid",
 ]
 
 [[package]]

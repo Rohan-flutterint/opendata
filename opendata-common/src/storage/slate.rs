@@ -9,13 +9,13 @@ use slatedb::{
 
 use crate::{
     BytesRange, Record, StorageError, StorageIterator, StorageRead, StorageResult,
-    storage::{MergeOperator, Storage, StorageSnapshot},
+    storage::{MergeOperator, RecordOp, Storage, StorageSnapshot},
 };
 
 /// Adapter that wraps our `MergeOperator` trait to implement SlateDB's `MergeOperator` trait.
 ///
 /// This allows using our common merge operator interface with SlateDB's merge functionality.
-pub(crate) struct SlateDbMergeOperatorAdapter {
+pub struct SlateDbMergeOperatorAdapter {
     operator: Arc<dyn MergeOperator>,
 }
 
@@ -160,10 +160,20 @@ impl StorageSnapshot for SlateDbStorageSnapshot {}
 
 #[async_trait]
 impl Storage for SlateDbStorage {
-    /// Writes a batch of records to SlateDB.
-    ///
-    /// This method uses SlateDB's batch write API to write all records atomically
-    /// in a single operation.
+    async fn apply(&self, records: Vec<RecordOp>) -> StorageResult<()> {
+        let mut batch = WriteBatch::new();
+        for op in records {
+            match op {
+                RecordOp::Put(record) => batch.put(record.key, record.value),
+                RecordOp::Merge(record) => batch.merge(record.key, record.value),
+            }
+        }
+        self.db
+            .write(batch)
+            .await
+            .map_err(StorageError::from_storage)?;
+        Ok(())
+    }
     async fn put(&self, records: Vec<Record>) -> StorageResult<()> {
         let mut batch = WriteBatch::new();
         for record in records {

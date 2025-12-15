@@ -6,6 +6,7 @@ use async_trait::async_trait;
 use bytes::Bytes;
 
 use super::{MergeOperator, Storage, StorageSnapshot};
+use crate::storage::RecordOp;
 use crate::{BytesRange, Record, StorageError, StorageIterator, StorageRead, StorageResult};
 
 /// In-memory implementation of the Storage trait using a BTreeMap.
@@ -140,6 +141,32 @@ impl StorageSnapshot for InMemoryStorageSnapshot {}
 
 #[async_trait]
 impl Storage for InMemoryStorage {
+    async fn apply(&self, records: Vec<RecordOp>) -> StorageResult<()> {
+        let mut data = self
+            .data
+            .write()
+            .map_err(|e| StorageError::Internal(format!("Failed to acquire write lock: {}", e)))?;
+
+        for record in records {
+            match record {
+                RecordOp::Put(record) => {
+                    data.insert(record.key, record.value);
+                }
+                RecordOp::Merge(record) => {
+                    let existing_value = data.get(&record.key).cloned();
+                    let merged_value = self.merge_operator.as_ref().unwrap().merge(
+                        &record.key,
+                        existing_value,
+                        record.value.clone(),
+                    );
+                    data.insert(record.key, merged_value);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     /// Writes a batch of records to the in-memory store.
     ///
     /// All records are written atomically within a single write lock acquisition.

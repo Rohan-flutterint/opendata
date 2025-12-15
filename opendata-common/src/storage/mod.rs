@@ -1,5 +1,6 @@
-mod in_memory;
-mod slate;
+pub mod in_memory;
+pub mod loader;
+pub mod slate;
 
 use std::sync::Arc;
 
@@ -22,6 +23,11 @@ impl Record {
     pub fn empty(key: Bytes) -> Self {
         Self::new(key, Bytes::new())
     }
+}
+
+pub enum RecordOp {
+    Put(Record),
+    Merge(Record),
 }
 
 /// Error type for storage operations
@@ -115,6 +121,8 @@ pub trait StorageSnapshot: StorageRead {}
 /// The storage type encapsulates access to the underlying storage (e.g. SlateDB).
 #[async_trait]
 pub trait Storage: StorageRead {
+    async fn apply(&self, ops: Vec<RecordOp>) -> StorageResult<()>;
+
     async fn put(&self, records: Vec<Record>) -> StorageResult<()>;
 
     /// Merges values for the given keys using the configured merge operator.

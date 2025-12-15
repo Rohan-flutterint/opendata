@@ -127,8 +127,8 @@ impl TimeBucketScoped for SeriesDictionaryKey {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ForwardIndexKey {
     pub time_bucket: BucketStart,
-    pub series_id: SeriesId,
     pub bucket_size: BucketSize,
+    pub series_id: SeriesId,
 }
 
 impl ForwardIndexKey {
@@ -198,9 +198,9 @@ impl TimeBucketScoped for ForwardIndexKey {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InvertedIndexKey {
     pub time_bucket: BucketStart,
+    pub bucket_size: BucketSize,
     pub attribute: String,
     pub value: String,
-    pub bucket_size: BucketSize,
 }
 
 impl InvertedIndexKey {
@@ -276,8 +276,8 @@ impl TimeBucketScoped for InvertedIndexKey {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TimeSeriesKey {
     pub time_bucket: BucketStart,
-    pub series_id: SeriesId,
     pub bucket_size: BucketSize,
+    pub series_id: SeriesId,
 }
 
 impl TimeSeriesKey {

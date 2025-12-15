@@ -78,7 +78,7 @@ pub(crate) struct SeriesSpec {
     pub(crate) attributes: Vec<Attribute>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Sample {
     pub(crate) timestamp: u64,
     pub(crate) value: f64,

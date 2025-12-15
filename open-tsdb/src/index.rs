@@ -9,6 +9,16 @@ pub(crate) struct ForwardIndex {
     pub(crate) series: DashMap<SeriesId, SeriesSpec>,
 }
 
+impl ForwardIndex {
+    pub(crate) fn merge(&self, other: &ForwardIndex) {
+        for entry in other.series.iter() {
+            let series_id = entry.key();
+            let series_spec = entry.value().clone();
+            self.series.insert(*series_id, series_spec.clone());
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub(crate) struct InvertedIndex {
     /// Maps Attribute (key, value) to the list of series_id values containing it.

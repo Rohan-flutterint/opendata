@@ -1,5 +1,7 @@
 // TimeSeries value structure with Gorilla compression using tsz crate
 
+use crate::model::Sample;
+
 use super::*;
 use bytes::Bytes;
 use tsz::stream::{BufferedWriter, Error as TszError, Read as TszRead};
@@ -123,17 +125,10 @@ impl<'a> TszRead for BytesReader<'a> {
     }
 }
 
-/// Time series data point
-#[derive(Debug, Clone, PartialEq)]
-pub struct TimeSeriesPoint {
-    pub timestamp_ms: u64,
-    pub value: f64,
-}
-
 /// TimeSeries value: Gorilla-compressed stream of (timestamp_ms, value) pairs
 #[derive(Debug, Clone, PartialEq)]
 pub struct TimeSeriesValue {
-    pub points: Vec<TimeSeriesPoint>,
+    pub points: Vec<Sample>,
 }
 
 impl TimeSeriesValue {
@@ -146,11 +141,11 @@ impl TimeSeriesValue {
 
         // Use Gorilla compression
         let w = BufferedWriter::new();
-        let start_time = self.points[0].timestamp_ms;
+        let start_time = self.points[0].timestamp;
         let mut encoder = StdEncoder::new(start_time, w);
 
         for point in &self.points {
-            let dp = DataPoint::new(point.timestamp_ms, point.value);
+            let dp = DataPoint::new(point.timestamp, point.value);
             encoder.encode(dp);
         }
 
@@ -171,8 +166,8 @@ impl TimeSeriesValue {
         loop {
             match decoder.next() {
                 Ok(dp) => {
-                    points.push(TimeSeriesPoint {
-                        timestamp_ms: dp.get_time(),
+                    points.push(Sample {
+                        timestamp: dp.get_time(),
                         value: dp.get_value(),
                     });
                 }
@@ -198,16 +193,16 @@ mod tests {
         // given
         let value = TimeSeriesValue {
             points: vec![
-                TimeSeriesPoint {
-                    timestamp_ms: 1000,
+                Sample {
+                    timestamp: 1000,
                     value: 10.0,
                 },
-                TimeSeriesPoint {
-                    timestamp_ms: 2000,
+                Sample {
+                    timestamp: 2000,
                     value: 20.0,
                 },
-                TimeSeriesPoint {
-                    timestamp_ms: 3000,
+                Sample {
+                    timestamp: 3000,
                     value: 30.0,
                 },
             ],
@@ -238,8 +233,8 @@ mod tests {
     fn should_encode_and_decode_single_point() {
         // given
         let value = TimeSeriesValue {
-            points: vec![TimeSeriesPoint {
-                timestamp_ms: 1609459200000,
+            points: vec![Sample {
+                timestamp: 1609459200,
                 value: 42.5,
             }],
         };
@@ -257,20 +252,20 @@ mod tests {
         // given
         let value = TimeSeriesValue {
             points: vec![
-                TimeSeriesPoint {
-                    timestamp_ms: 1000,
+                Sample {
+                    timestamp: 1000,
                     value: f64::INFINITY,
                 },
-                TimeSeriesPoint {
-                    timestamp_ms: 2000,
+                Sample {
+                    timestamp: 2000,
                     value: f64::NEG_INFINITY,
                 },
-                TimeSeriesPoint {
-                    timestamp_ms: 3000,
+                Sample {
+                    timestamp: 3000,
                     value: 0.0,
                 },
-                TimeSeriesPoint {
-                    timestamp_ms: 4000,
+                Sample {
+                    timestamp: 4000,
                     value: -0.0,
                 },
             ],

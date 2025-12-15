@@ -5,6 +5,7 @@ mod model;
 mod otel;
 mod serde;
 mod storage;
+mod tsdb;
 mod util;
 
 fn main() {

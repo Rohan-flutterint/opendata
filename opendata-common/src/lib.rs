@@ -2,5 +2,6 @@
 pub mod storage;
 pub mod util;
 
-pub use storage::{Record, StorageError, StorageIterator, StorageRead, StorageResult};
+pub use storage::loader::{LoadMetadata, LoadResult, LoadSpec, Loadable, Loader};
+pub use storage::{Record, Storage, StorageError, StorageIterator, StorageRead, StorageResult};
 pub use util::BytesRange;
