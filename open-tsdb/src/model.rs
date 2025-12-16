@@ -50,7 +50,7 @@ pub(crate) enum MetricType {
     Summary,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct TimeBucket {
     pub(crate) start: BucketStart,
     pub(crate) size: BucketSize,

@@ -42,6 +42,16 @@ impl TsdbHead {
         }
     }
 
+    /// Returns a reference to the series dictionary (contains only NEW series)
+    pub fn series_dict(&self) -> &DashMap<SeriesFingerprint, SeriesId> {
+        &self.series_dict
+    }
+
+    /// Returns a reference to the bucket
+    pub fn bucket(&self) -> &TimeBucket {
+        &self.bucket
+    }
+
     pub fn merge(&self, delta: &TsdbDelta) -> Result<()> {
         if self.frozen.load(Ordering::SeqCst) {
             return Err(OpenTsdbError::Internal("TsdbHead is frozen".to_string()));
@@ -68,7 +78,7 @@ impl TsdbHead {
         self.frozen.fetch_or(true, Ordering::SeqCst)
     }
 
-    pub async fn flush(&self, storage: &dyn Storage) -> Result<Arc<dyn StorageSnapshot>> {
+    pub async fn flush(&self, storage: Arc<dyn Storage>) -> Result<Arc<dyn StorageSnapshot>> {
         if !self.frozen.load(Ordering::SeqCst) {
             return Err(OpenTsdbError::Internal(
                 "Should only flush frozen TsdbHead".to_string(),

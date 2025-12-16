@@ -27,6 +27,12 @@ impl Clock for MockClock {
     }
 }
 
+impl Default for MockClock {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MockClock {
     pub fn with_time(time: SystemTime) -> Self {
         Self {

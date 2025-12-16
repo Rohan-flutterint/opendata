@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use dashmap::DashMap;
 use opentelemetry_proto::tonic::metrics::v1::Metric;
 
 use crate::{
@@ -15,7 +16,7 @@ pub(crate) struct TsdbDeltaBuilder<'a> {
     pub(crate) bucket: TimeBucket,
     pub(crate) forward_index: ForwardIndex,
     pub(crate) inverted_index: InvertedIndex,
-    pub(crate) series_dict: &'a HashMap<SeriesFingerprint, SeriesId>,
+    pub(crate) series_dict: &'a DashMap<SeriesFingerprint, SeriesId>,
     pub(crate) series_dict_delta: HashMap<SeriesFingerprint, SeriesId>,
     pub(crate) samples: HashMap<SeriesId, Vec<Sample>>,
     pub(crate) next_series_id: u32,
@@ -24,7 +25,8 @@ pub(crate) struct TsdbDeltaBuilder<'a> {
 impl<'a> TsdbDeltaBuilder<'a> {
     pub(crate) fn new(
         bucket: TimeBucket,
-        series_dict: &'a HashMap<SeriesFingerprint, SeriesId>,
+        series_dict: &'a DashMap<SeriesFingerprint, SeriesId>,
+        next_series_id: u32,
     ) -> Self {
         Self {
             bucket,
@@ -33,7 +35,7 @@ impl<'a> TsdbDeltaBuilder<'a> {
             series_dict,
             series_dict_delta: HashMap::new(),
             samples: HashMap::new(),
-            next_series_id: 0,
+            next_series_id,
         }
     }
 
@@ -73,8 +75,8 @@ impl<'a> TsdbDeltaBuilder<'a> {
         let series_id = self
             .series_dict
             .get(&fingerprint)
-            .or_else(|| self.series_dict_delta.get(&fingerprint))
-            .copied()
+            .map(|r| *r.value())
+            .or_else(|| self.series_dict_delta.get(&fingerprint).copied())
             .unwrap_or_else(|| {
                 let series_id = self.next_series_id;
                 self.next_series_id = series_id + 1;
@@ -128,6 +130,7 @@ pub(crate) struct TsdbDelta {
 mod tests {
     use super::*;
     use crate::model::{Attribute, MetricType, Temporality};
+    use dashmap::DashMap;
 
     fn create_test_bucket() -> TimeBucket {
         TimeBucket::hour(1000)
@@ -157,8 +160,8 @@ mod tests {
     fn should_create_new_series_when_ingesting_first_sample() {
         // given
         let bucket = create_test_bucket();
-        let series_dict = HashMap::new();
-        let mut builder = TsdbDeltaBuilder::new(bucket, &series_dict);
+        let series_dict = DashMap::new();
+        let mut builder = TsdbDeltaBuilder::new(bucket, &series_dict, 0);
         let attributes = create_test_attributes();
         let sample = create_test_sample();
         let metric_unit = Some("bytes".to_string());
@@ -205,8 +208,8 @@ mod tests {
     fn should_reuse_series_id_for_samples_with_same_attributes() {
         // given
         let bucket = create_test_bucket();
-        let series_dict = HashMap::new();
-        let mut builder = TsdbDeltaBuilder::new(bucket, &series_dict);
+        let series_dict = DashMap::new();
+        let mut builder = TsdbDeltaBuilder::new(bucket, &series_dict, 0);
         let attributes = create_test_attributes();
         let sample1 = Sample {
             timestamp: 1000,
@@ -248,8 +251,8 @@ mod tests {
     fn should_create_different_series_id_for_different_attributes() {
         // given
         let bucket = create_test_bucket();
-        let series_dict = HashMap::new();
-        let mut builder = TsdbDeltaBuilder::new(bucket, &series_dict);
+        let series_dict = DashMap::new();
+        let mut builder = TsdbDeltaBuilder::new(bucket, &series_dict, 0);
         let attributes1 = vec![Attribute {
             key: "service".to_string(),
             value: "api".to_string(),
@@ -286,13 +289,13 @@ mod tests {
     fn should_reuse_series_id_from_existing_series_dict() {
         // given
         let bucket = create_test_bucket();
-        let mut series_dict = HashMap::new();
+        let series_dict = DashMap::new();
         let mut attributes = create_test_attributes();
         // Sort attributes to match what ingest_sample does
         attributes.sort_by(|a, b| a.key.cmp(&b.key));
         let fingerprint = attributes.fingerprint();
         series_dict.insert(fingerprint, 42); // Existing series_id
-        let mut builder = TsdbDeltaBuilder::new(bucket, &series_dict);
+        let mut builder = TsdbDeltaBuilder::new(bucket, &series_dict, 0);
         let metric_type = MetricType::Gauge;
 
         // when
@@ -314,8 +317,8 @@ mod tests {
     fn should_reuse_series_id_from_delta_dict_when_ingesting_again() {
         // given
         let bucket = create_test_bucket();
-        let series_dict = HashMap::new();
-        let mut builder = TsdbDeltaBuilder::new(bucket, &series_dict);
+        let series_dict = DashMap::new();
+        let mut builder = TsdbDeltaBuilder::new(bucket, &series_dict, 0);
         let attributes = create_test_attributes();
         let metric_type = MetricType::Gauge;
 
@@ -345,8 +348,8 @@ mod tests {
     fn should_sort_attributes_before_fingerprinting() {
         // given
         let bucket = create_test_bucket();
-        let series_dict = HashMap::new();
-        let mut builder = TsdbDeltaBuilder::new(bucket, &series_dict);
+        let series_dict = DashMap::new();
+        let mut builder = TsdbDeltaBuilder::new(bucket, &series_dict, 0);
         let attributes1 = vec![
             Attribute {
                 key: "z_key".to_string(),
@@ -393,8 +396,8 @@ mod tests {
     fn should_store_metric_unit_and_type_in_forward_index() {
         // given
         let bucket = create_test_bucket();
-        let series_dict = HashMap::new();
-        let mut builder = TsdbDeltaBuilder::new(bucket, &series_dict);
+        let series_dict = DashMap::new();
+        let mut builder = TsdbDeltaBuilder::new(bucket, &series_dict, 0);
         let attributes = create_test_attributes();
         let metric_unit = Some("requests_per_second".to_string());
         let metric_type = MetricType::Sum {
@@ -429,8 +432,8 @@ mod tests {
     fn should_index_all_attributes_in_inverted_index() {
         // given
         let bucket = create_test_bucket();
-        let series_dict = HashMap::new();
-        let mut builder = TsdbDeltaBuilder::new(bucket, &series_dict);
+        let series_dict = DashMap::new();
+        let mut builder = TsdbDeltaBuilder::new(bucket, &series_dict, 0);
         let attributes = vec![
             Attribute {
                 key: "service".to_string(),
@@ -468,8 +471,8 @@ mod tests {
     fn should_handle_empty_attributes_list() {
         // given
         let bucket = create_test_bucket();
-        let series_dict = HashMap::new();
-        let mut builder = TsdbDeltaBuilder::new(bucket, &series_dict);
+        let series_dict = DashMap::new();
+        let mut builder = TsdbDeltaBuilder::new(bucket, &series_dict, 0);
         let attributes = Vec::<Attribute>::new();
         let metric_type = MetricType::Gauge;
 
@@ -494,8 +497,8 @@ mod tests {
     fn should_handle_none_metric_unit() {
         // given
         let bucket = create_test_bucket();
-        let series_dict = HashMap::new();
-        let mut builder = TsdbDeltaBuilder::new(bucket, &series_dict);
+        let series_dict = DashMap::new();
+        let mut builder = TsdbDeltaBuilder::new(bucket, &series_dict, 0);
         let attributes = create_test_attributes();
         let metric_type = MetricType::Gauge;
 
