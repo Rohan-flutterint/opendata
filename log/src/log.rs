@@ -9,8 +9,8 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use bytes::Bytes;
-use opendata_common::storage::factory::create_storage;
-use opendata_common::{
+use common::storage::factory::create_storage;
+use common::{
     BytesRange, Record as StorageRecord, Storage, StorageIterator, StorageRead,
     WriteOptions as StorageWriteOptions,
 };
@@ -326,7 +326,7 @@ impl LogRead for Log {
 
 #[cfg(test)]
 mod tests {
-    use opendata_common::{BytesRange, StorageConfig};
+    use common::{BytesRange, StorageConfig};
 
     use super::*;
     use crate::config::Config;

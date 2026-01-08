@@ -37,13 +37,13 @@
 use std::ops::{Bound, RangeBounds};
 
 use bytes::{BufMut, Bytes, BytesMut};
-use opendata_common::BytesRange;
-use opendata_common::serde::terminated_bytes;
+use common::BytesRange;
+use common::serde::terminated_bytes;
 
 use crate::error::Error;
 
-impl From<opendata_common::serde::DeserializeError> for Error {
-    fn from(err: opendata_common::serde::DeserializeError) -> Self {
+impl From<common::serde::DeserializeError> for Error {
+    fn from(err: common::serde::DeserializeError) -> Self {
         Error::Encoding(err.message)
     }
 }
