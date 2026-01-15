@@ -747,7 +747,6 @@ mod tests {
         // given:
         let storage = create_test_storage().await;
         let tsdb = Tsdb::new(storage);
-        let _query_time = UNIX_EPOCH + Duration::from_secs(4100);
         let request = QueryRequest {
             query: "1+1".to_string(),
             time: Some(UNIX_EPOCH + Duration::from_secs(4)),
