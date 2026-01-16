@@ -48,15 +48,16 @@ adding meaningful benchmarks.
   handle metrics collection (throughput, latency percentiles, resource usage)
   so individual benchmarks don't need to implement this repeatedly.
 
-- **Machine-readable output**: Produce JSON or similar structured output that
-  can be checked into the repository and consumed by external tools.
+- **Machine-readable output**: Produce CSV output tagged by git commit that can
+  be checked into the repository and consumed by external analysis tools.
 
 - **CI integration readiness**: Design for periodic execution in CI, with
   results stored in a format amenable to automated regression analysis.
 
-- **Enable AI-assisted regression analysis**: Structure results so that an AI
-  agent can periodically inspect them, identify regressions, and correlate
-  changes with specific commits.
+- **Enable AI-assisted regression analysis**: Integrate with
+  [Apache Otava](https://otava.apache.org/) for statistical change-point
+  detection, and structure results so that an AI agent can correlate identified
+  regressions with specific commits.
 
 ## Non-Goals
 
@@ -83,8 +84,44 @@ adding meaningful benchmarks.
 - TOML-based configuration with CLI overrides
 - Trait-based workload abstraction
 - Pluggable storage backend provisioning
-- Structured JSON output format
+- CSV output format compatible with Apache Otava
 - Integration with existing Prometheus metrics where applicable
+
+### Regression Analysis Stack
+
+The regression analysis pipeline consists of three components:
+
+1. **Opendata Bencher**: Writes benchmark results to CSV files. Each row
+   includes a timestamp, metric values (throughput, latency percentiles, etc.),
+   and attributes such as git commit SHA or version tag. Results are checked
+   into the repository periodically.
+
+2. **Apache Otava**: Performs statistical change-point detection on the CSV
+   history using the e-divisive algorithm. Otava identifies points in time
+   where metrics changed significantly and provides a P-value indicating
+   confidence that the change was not due to random variance.
+
+3. **AI Agent**: Consumes Otava's analysis output and the raw benchmark results.
+   When Otava detects a change point, the agent uses the associated commit
+   attribute as a reference point in the git log to build a list of candidate
+   commits that may have caused the regression. The agent could potentially
+   rerun benchmarks to confirm a regression, or use git bisect to narrow down
+   the culprit.
+
+### CI Integration
+
+The benchmark pipeline integrates with GitHub Actions workflows:
+
+- **Scheduled runs**: Benchmarks run nightly (or on another configurable
+  schedule) against the latest main branch. Results are committed to the
+  repository and Otava analysis is triggered.
+
+- **Manual triggers**: Workflows can be manually dispatched via `workflow_dispatch`
+  for ad-hoc benchmarking (e.g., before a release or to investigate a suspected
+  regression).
+
+- **AI agent invocation**: After Otava analysis completes, the workflow invokes
+  the AI agent to review results and open an issue if regressions are detected.
 
 ## Alternatives
 
@@ -98,12 +135,9 @@ adding meaningful benchmarks.
 2. What specific telemetry should be collected by default? Throughput and
    latency percentiles seem essential—what else?
 
-3. Where should we store periodic bench results? 
+3. Where should we store periodic bench results in the repository?
 
-4. Should we adopt or integrate with external tools like
-   [Bencher](https://bencher.dev/) for tracking, or keep results self-contained?
-
-5. What is the minimum viable interface a system must implement to plug into
+4. What is the minimum viable interface a system must implement to plug into
    the framework?
 
 ## Updates
