@@ -1057,6 +1057,8 @@ impl Catalog for LocalCatalog {
 
 #### S3Catalog (Multi-Shard)
 
+> **Note**: The catalog implementation sketched here is directional. There are many approaches. For instance the catalog could be stored in a special config-kv store that's backed by SlateDB itself, this could use a single-writer/many-readers pattern, with reader instances embedded alongside database writers and readers to quickly resolve key → shard → storage config. This architecture would scale well and is worth exploring in a follow-up RFC.
+
 For distributed deployments, the catalog is stored in S3 alongside the data:
 
 ```
