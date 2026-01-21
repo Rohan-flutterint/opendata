@@ -1,0 +1,100 @@
+# RFC 0003: Catalog
+
+**Status**: Draft
+
+**Authors**:
+- [Jason Gustafson](https://github.com/hachikuji)
+
+## Summary
+
+This RFC proposes a catalog system for OpenData that serves as a central management plane for OpenData storage systems. The catalog provides a single point to manage metadata about the systems ("slates") a user has installed, including their names, types, and object storage configuration. The catalog itself is implemented as a slate backed by SlateDB, following the same patterns as other OpenData subsystems.
+
+## Motivation
+
+OpenData comprises multiple storage subsystems (log, timeseries, vector, etc.) that share a common foundation on SlateDB. As users deploy multiple instances of these systems, several cross-cutting operational concerns emerge:
+
+1. **Discovery** — There is no unified way to enumerate which slates exist within an environment. Operators must track this information externally or inspect object storage directly.
+
+2. **Configuration management** — Each slate requires object storage configuration (bucket, path prefix, credentials). Without a central registry, this configuration is scattered and difficult to audit.
+
+3. **Lifecycle management** — Creating and deleting slates involves coordinating metadata across multiple locations. A catalog provides a single point of control for these operations.
+
+4. **Operational tooling** — Cross-cutting tools (backup, monitoring, migration) need a way to discover and enumerate slates without subsystem-specific knowledge.
+
+A catalog addresses these concerns by providing:
+
+- A single source of truth for slate metadata
+- Consistent registration and deletion workflows
+- A foundation for future operational tooling that works across subsystem types
+
+The catalog is itself a slate backed by SlateDB, ensuring it benefits from the same durability and operational characteristics as the systems it manages.
+
+### Hypothetical Workflow
+
+```
+$ opendata slate list
+NAME        TYPE        BUCKET
+events      log         s3://acme-data/events
+metrics     timeseries  s3://acme-data/metrics
+
+$ opendata slate register --name orders --type log --bucket s3://acme-data/orders
+Registered slate 'orders'
+
+$ opendata slate list
+NAME        TYPE        BUCKET
+events      log         s3://acme-data/events
+metrics     timeseries  s3://acme-data/metrics
+orders      log         s3://acme-data/orders
+
+$ opendata slate describe orders
+Name:   orders
+Type:   log
+Bucket: s3://acme-data/orders
+
+$ opendata slate delete orders
+Deleted slate 'orders'
+
+$ opendata slate config events
+storage:
+  type: SlateDb
+  path: events
+  object_store:
+    type: Aws
+    region: us-west-2
+    bucket: acme-data
+```
+
+## Goals
+
+- Define "slate" as the fundamental unit of an OpenData system
+- Specify the metadata required to describe a slate (name, type, object storage location)
+- Establish the catalog as a SlateDB-backed registry of slate metadata
+- Define the registration process for adding new slates to the catalog
+- Define the deletion process for removing slates from the catalog
+- Ensure the catalog can manage slates of all types (log, timeseries, vector)
+
+## Non-Goals
+
+_To be completed in a future revision._
+
+## Design
+
+_To be completed in a future revision._
+
+## Alternatives
+
+_To be completed in a future revision._
+
+## Open Questions
+
+1. **Catalog bootstrap** — How is the catalog itself discovered? If the catalog is a slate, where is its object storage configuration stored?
+
+2. **Bucket metadata** — What specific fields are required for object storage configuration? (bucket name, region, path prefix, credentials reference?)
+
+3. **Catalog location** — Should there be one catalog per bucket, per region, or per "environment"? What is the deployment topology?
+
+## Updates
+
+| Date       | Description |
+|------------|-------------|
+| 2026-01-21 | Initial draft |
