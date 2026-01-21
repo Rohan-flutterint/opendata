@@ -79,7 +79,61 @@ _To be completed in a future revision._
 
 ## Design
 
-_To be completed in a future revision._
+### Communication Model
+
+The catalog does not operate as a persistent service with a communication endpoint. Instead, all interaction with the catalog occurs through its SlateDB-backed storage. This follows directly from SlateDB's Reader/Writer model, where components temporarily assume one of two roles:
+
+- **Writer** — A component that opens the catalog with write access to mutate state (register slates, update metadata, record status changes).
+- **Reader** — A component that opens a read-only view of the catalog to observe state changes.
+
+This model enables coordination between loosely-coupled components without requiring a running service or explicit RPC. Components communicate implicitly by writing state that other components read.
+
+#### Example: Registration and Provisioning
+
+Consider a flow where a user registers a new slate and a provisioning system responds:
+
+1. A CLI tool temporarily assumes the **Writer** role to register a new slate in the catalog.
+2. A provisioning system (e.g., a Kubernetes operator) running as a **Reader** observes the new registration.
+3. The provisioning system creates the corresponding infrastructure (pods, services, etc.).
+4. The provisioning system temporarily assumes the **Writer** role to update the slate's status, indicating provisioning is complete.
+5. The CLI (or other tooling) as a **Reader** can observe the updated status.
+
+```
+┌─────────┐         ┌─────────────────┐         ┌─────────────────┐
+│   CLI   │         │     Catalog     │         │   Provisioner   │
+│         │         │    (SlateDB)    │         │   (K8s, etc.)   │
+└────┬────┘         └────────┬────────┘         └────────┬────────┘
+     │                       │                           │
+     │  [Writer] register    │                           │
+     │  slate "orders"       │                           │
+     │──────────────────────►│                           │
+     │                       │                           │
+     │                       │   [Reader] observe new    │
+     │                       │   registration            │
+     │                       │◄──────────────────────────│
+     │                       │                           │
+     │                       │                      create infra
+     │                       │                           │
+     │                       │   [Writer] update status  │
+     │                       │   "provisioned"           │
+     │                       │◄──────────────────────────│
+     │                       │                           │
+     │  [Reader] observe     │                           │
+     │  status change        │                           │
+     │◄──────────────────────│                           │
+     │                       │                           │
+```
+
+This is not a formal provisioning protocol—specific workflows are left for future work. The key insight is that the catalog's storage layer *is* the communication channel. There is no separate messaging system or service API.
+
+#### Implications
+
+- **No always-on service** — The catalog does not require a continuously running process. Components open Reader or Writer handles as needed.
+- **Distributed coordination via storage** — Object storage (S3, GCS, etc.) serves as the durable communication medium.
+- **Consistency from SlateDB** — SlateDB's single-writer guarantee ensures catalog mutations are serialized. Readers see a consistent snapshot.
+- **Polling for changes** — Readers must poll to observe updates. Future work may explore change notification mechanisms built on SlateDB.
+
+_Additional design sections to be completed in a future revision._
 
 ## Alternatives
 
