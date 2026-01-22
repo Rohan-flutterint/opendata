@@ -100,7 +100,7 @@ impl PromqlServer {
             );
             loop {
                 ticker.tick().await;
-                if let Err(e) = tsdb_for_flush.flush(flush_interval_secs).await {
+                if let Err(e) = tsdb_for_flush.flush().await {
                     tracing::error!("Failed to flush TSDB: {}", e);
                 } else {
                     tracing::debug!("Flushed TSDB");

@@ -233,9 +233,7 @@ impl Scraper {
 
     /// Ingest samples into the TSDB.
     async fn ingest_samples(&self, samples: Vec<Series>) -> Result<()> {
-        self.tsdb
-            .ingest_samples(samples, self.config.flush_interval_secs)
-            .await
+        self.tsdb.ingest_samples(samples).await
     }
 }
 
@@ -251,7 +249,7 @@ mod tests {
                 crate::storage::merge_operator::OpenTsdbMergeOperator,
             )),
         );
-        let tsdb = Arc::new(Tsdb::new(storage));
+        let tsdb = Arc::new(Tsdb::new(storage, std::time::Duration::from_secs(30)));
         let config = PrometheusConfig::default();
         let metrics = Arc::new(Metrics::new());
 

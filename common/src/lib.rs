@@ -1,11 +1,15 @@
 pub mod bytes;
 pub mod clock;
+pub mod coordinator;
 pub mod sequence;
 pub mod serde;
 pub mod storage;
 
 pub use bytes::BytesRange;
 pub use clock::Clock;
+pub use coordinator::{
+    CoordinatorConfig, CoordinatorHandle, Delta, Epoch, FlushError, FlushHandler, WriteCoordinator,
+};
 pub use sequence::{
     DEFAULT_BLOCK_SIZE, SeqBlockStore, SequenceAllocator, SequenceError, SequenceResult,
 };

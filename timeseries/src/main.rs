@@ -2,7 +2,7 @@
 
 mod delta;
 mod error;
-mod head;
+mod flush_handler;
 mod index;
 mod minitsdb;
 mod model;
@@ -16,6 +16,7 @@ mod tsdb;
 mod util;
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use clap::Parser;
 use common::storage::factory::create_storage;
@@ -71,7 +72,8 @@ async fn main() {
     tracing::info!("Storage created successfully");
 
     // Create Tsdb
-    let tsdb = Arc::new(Tsdb::new(storage));
+    let flush_interval = Duration::from_secs(prometheus_config.flush_interval_secs);
+    let tsdb = Arc::new(Tsdb::new(storage, flush_interval));
 
     // Create server configuration
     let config = ServerConfig {

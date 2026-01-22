@@ -39,7 +39,7 @@
 
 // Internal modules
 mod delta;
-mod head;
+mod flush_handler;
 mod index;
 mod minitsdb;
 mod promql;
