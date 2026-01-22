@@ -4,7 +4,6 @@ use std::sync::Arc;
 
 use axum::extract::{Query, State};
 use axum::Json;
-use base64::Engine;
 
 use super::error::ApiError;
 use super::metrics::{AppendLabels, Metrics, OperationStatus, ScanLabels};
@@ -27,7 +26,7 @@ pub async fn handle_append(
     State(state): State<AppState>,
     Json(body): Json<AppendBody>,
 ) -> Result<Json<AppendResponse>, ApiError> {
-    let records = body.decode_records()?;
+    let records = body.to_records()?;
     let count = records.len();
 
     let options = WriteOptions {
@@ -67,14 +66,14 @@ pub async fn handle_scan(
     State(state): State<AppState>,
     Query(params): Query<ScanParams>,
 ) -> Result<Json<ScanResponse>, ApiError> {
-    let key = params.decode_key()?;
+    let key = params.key();
     let range = params.seq_range();
     let limit = params.limit.unwrap_or(1000);
 
     match state.log.scan(key, range).await {
         Ok(mut iter) => {
             let mut entries = Vec::new();
-            while let Some(entry) = iter.next().await.map_err(|e| ApiError::from(e))? {
+            while let Some(entry) = iter.next().await.map_err(ApiError::from)? {
                 entries.push(ScanEntry::from(&entry));
                 if entries.len() >= limit {
                     break;
@@ -116,9 +115,9 @@ pub async fn handle_list_keys(
     let mut iter = state.log.list(range).await?;
     let mut keys = Vec::new();
 
-    while let Some(log_key) = iter.next().await.map_err(|e| ApiError::from(e))? {
+    while let Some(log_key) = iter.next().await.map_err(ApiError::from)? {
         keys.push(KeyEntry {
-            key: base64::engine::general_purpose::STANDARD.encode(&log_key.key),
+            key: String::from_utf8_lossy(&log_key.key).into_owned(),
         });
         if keys.len() >= limit {
             break;
@@ -133,7 +132,7 @@ pub async fn handle_count(
     State(state): State<AppState>,
     Query(params): Query<CountParams>,
 ) -> Result<Json<CountResponse>, ApiError> {
-    let key = params.decode_key()?;
+    let key = params.key();
     let range = params.seq_range();
 
     let count = state.log.count(key, range).await?;

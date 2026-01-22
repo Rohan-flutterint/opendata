@@ -2,7 +2,6 @@
 
 use std::sync::Arc;
 
-use base64::Engine;
 use bytes::Bytes;
 use common::StorageConfig;
 use log::{Config, Log, Record};
@@ -13,10 +12,6 @@ async fn setup_test_log() -> Arc<Log> {
         ..Default::default()
     };
     Arc::new(Log::open(config).await.expect("Failed to open log"))
-}
-
-fn encode_base64(data: &[u8]) -> String {
-    base64::engine::general_purpose::STANDARD.encode(data)
 }
 
 #[tokio::test]
@@ -139,18 +134,4 @@ async fn test_scan_with_sequence_range() {
     assert_eq!(entries[0].sequence, 1);
     assert_eq!(entries[1].sequence, 2);
     assert_eq!(entries[2].sequence, 3);
-}
-
-#[tokio::test]
-async fn test_base64_encoding_helper() {
-    // Test the base64 encoding used in the HTTP API
-    let key = b"test-key";
-    let encoded = encode_base64(key);
-    assert_eq!(encoded, "dGVzdC1rZXk=");
-
-    // Verify round-trip
-    let decoded = base64::engine::general_purpose::STANDARD
-        .decode(&encoded)
-        .expect("Failed to decode");
-    assert_eq!(decoded, key);
 }

@@ -1,6 +1,5 @@
 //! HTTP request types for the log server.
 
-use base64::Engine;
 use bytes::Bytes;
 use serde::Deserialize;
 
@@ -9,7 +8,7 @@ use crate::Error;
 /// Query parameters for scan requests.
 #[derive(Debug, Deserialize)]
 pub struct ScanParams {
-    /// Base64-encoded key to scan.
+    /// Key to scan (plain string, URL-encoded if needed).
     pub key: String,
     /// Start sequence number (inclusive).
     pub start_seq: Option<u64>,
@@ -20,12 +19,9 @@ pub struct ScanParams {
 }
 
 impl ScanParams {
-    /// Decode the base64-encoded key.
-    pub fn decode_key(&self) -> Result<Bytes, Error> {
-        base64::engine::general_purpose::STANDARD
-            .decode(&self.key)
-            .map(Bytes::from)
-            .map_err(|e| Error::InvalidInput(format!("invalid base64 key: {}", e)))
+    /// Get the key as bytes.
+    pub fn key(&self) -> Bytes {
+        Bytes::from(self.key.clone())
     }
 
     /// Get the sequence range as start..end.
@@ -59,7 +55,7 @@ impl ListKeysParams {
 /// Query parameters for count requests.
 #[derive(Debug, Deserialize)]
 pub struct CountParams {
-    /// Base64-encoded key to count.
+    /// Key to count (plain string, URL-encoded if needed).
     pub key: String,
     /// Start sequence number (inclusive).
     pub start_seq: Option<u64>,
@@ -68,12 +64,9 @@ pub struct CountParams {
 }
 
 impl CountParams {
-    /// Decode the base64-encoded key.
-    pub fn decode_key(&self) -> Result<Bytes, Error> {
-        base64::engine::general_purpose::STANDARD
-            .decode(&self.key)
-            .map(Bytes::from)
-            .map_err(|e| Error::InvalidInput(format!("invalid base64 key: {}", e)))
+    /// Get the key as bytes.
+    pub fn key(&self) -> Bytes {
+        Bytes::from(self.key.clone())
     }
 
     /// Get the sequence range as start..end.
@@ -87,24 +80,19 @@ impl CountParams {
 /// A single record in an append request.
 #[derive(Debug, Deserialize)]
 pub struct AppendRecord {
-    /// Base64-encoded key.
+    /// Key (plain string).
     pub key: String,
-    /// Base64-encoded value.
+    /// Value (plain string).
     pub value: String,
 }
 
 impl AppendRecord {
-    /// Decode to a log Record.
-    pub fn decode(&self) -> Result<crate::Record, Error> {
-        let key = base64::engine::general_purpose::STANDARD
-            .decode(&self.key)
-            .map(Bytes::from)
-            .map_err(|e| Error::InvalidInput(format!("invalid base64 key: {}", e)))?;
-        let value = base64::engine::general_purpose::STANDARD
-            .decode(&self.value)
-            .map(Bytes::from)
-            .map_err(|e| Error::InvalidInput(format!("invalid base64 value: {}", e)))?;
-        Ok(crate::Record { key, value })
+    /// Convert to a log Record.
+    pub fn to_record(&self) -> Result<crate::Record, Error> {
+        Ok(crate::Record {
+            key: Bytes::from(self.key.clone()),
+            value: Bytes::from(self.value.clone()),
+        })
     }
 }
 
@@ -119,9 +107,9 @@ pub struct AppendBody {
 }
 
 impl AppendBody {
-    /// Decode all records.
-    pub fn decode_records(&self) -> Result<Vec<crate::Record>, Error> {
-        self.records.iter().map(|r| r.decode()).collect()
+    /// Convert all records to log Records.
+    pub fn to_records(&self) -> Result<Vec<crate::Record>, Error> {
+        self.records.iter().map(|r| r.to_record()).collect()
     }
 }
 
@@ -130,60 +118,43 @@ mod tests {
     use super::*;
 
     #[test]
-    fn should_decode_base64_key() {
-        // given - "test" encoded as base64
-        let params = ScanParams {
-            key: "dGVzdA==".to_string(),
-            start_seq: None,
-            end_seq: None,
-            limit: None,
-        };
-
-        // when
-        let key = params.decode_key().unwrap();
-
-        // then
-        assert_eq!(key.as_ref(), b"test");
-    }
-
-    #[test]
-    fn should_return_error_for_invalid_base64() {
+    fn should_get_key_as_bytes() {
         // given
         let params = ScanParams {
-            key: "not-valid-base64!!!".to_string(),
+            key: "my-key".to_string(),
             start_seq: None,
             end_seq: None,
             limit: None,
         };
 
         // when
-        let result = params.decode_key();
+        let key = params.key();
 
         // then
-        assert!(result.is_err());
+        assert_eq!(key.as_ref(), b"my-key");
     }
 
     #[test]
-    fn should_decode_append_record() {
-        // given - "key" and "value" encoded as base64
+    fn should_convert_append_record() {
+        // given
         let record = AppendRecord {
-            key: "a2V5".to_string(),
-            value: "dmFsdWU=".to_string(),
+            key: "events".to_string(),
+            value: r#"{"event": "click"}"#.to_string(),
         };
 
         // when
-        let decoded = record.decode().unwrap();
+        let log_record = record.to_record().unwrap();
 
         // then
-        assert_eq!(decoded.key.as_ref(), b"key");
-        assert_eq!(decoded.value.as_ref(), b"value");
+        assert_eq!(log_record.key.as_ref(), b"events");
+        assert_eq!(log_record.value.as_ref(), br#"{"event": "click"}"#);
     }
 
     #[test]
     fn should_return_default_seq_range() {
         // given
         let params = ScanParams {
-            key: "dGVzdA==".to_string(),
+            key: "test".to_string(),
             start_seq: None,
             end_seq: None,
             limit: None,
@@ -201,7 +172,7 @@ mod tests {
     fn should_use_provided_seq_range() {
         // given
         let params = ScanParams {
-            key: "dGVzdA==".to_string(),
+            key: "test".to_string(),
             start_seq: Some(10),
             end_seq: Some(100),
             limit: None,

@@ -1,6 +1,5 @@
 //! HTTP response types for the log server.
 
-use base64::Engine;
 use serde::Serialize;
 
 use crate::LogEntry;
@@ -8,20 +7,20 @@ use crate::LogEntry;
 /// A single entry in a scan response.
 #[derive(Debug, Serialize)]
 pub struct ScanEntry {
-    /// Base64-encoded key.
+    /// Key (UTF-8 string).
     pub key: String,
     /// Sequence number.
     pub sequence: u64,
-    /// Base64-encoded value.
+    /// Value (UTF-8 string).
     pub value: String,
 }
 
 impl From<&LogEntry> for ScanEntry {
     fn from(entry: &LogEntry) -> Self {
         Self {
-            key: base64::engine::general_purpose::STANDARD.encode(&entry.key),
+            key: String::from_utf8_lossy(&entry.key).into_owned(),
             sequence: entry.sequence,
-            value: base64::engine::general_purpose::STANDARD.encode(&entry.value),
+            value: String::from_utf8_lossy(&entry.value).into_owned(),
         }
     }
 }
@@ -67,7 +66,7 @@ impl AppendResponse {
 /// A key entry in a list keys response.
 #[derive(Debug, Serialize)]
 pub struct KeyEntry {
-    /// Base64-encoded key.
+    /// Key (UTF-8 string).
     pub key: String,
 }
 
@@ -127,19 +126,18 @@ mod tests {
         let scan_entry = ScanEntry::from(&entry);
 
         // then
+        assert_eq!(scan_entry.key, "test-key");
         assert_eq!(scan_entry.sequence, 42);
-        // Verify base64 encoding
-        assert_eq!(scan_entry.key, "dGVzdC1rZXk=");
-        assert_eq!(scan_entry.value, "dGVzdC12YWx1ZQ==");
+        assert_eq!(scan_entry.value, "test-value");
     }
 
     #[test]
     fn should_create_success_scan_response() {
         // given
         let entries = vec![ScanEntry {
-            key: "a2V5".to_string(),
+            key: "key".to_string(),
             sequence: 0,
-            value: "dmFsdWU=".to_string(),
+            value: "value".to_string(),
         }];
 
         // when
