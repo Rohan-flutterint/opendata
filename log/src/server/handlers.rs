@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use axum::extract::{Query, State};
 use axum::Json;
+use axum::extract::{Query, State};
 
 use super::error::ApiError;
 use super::metrics::{AppendLabels, Metrics, OperationStatus, ScanLabels};

@@ -3,12 +3,12 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use axum::routing::{get, post};
 use axum::Router;
+use axum::routing::{get, post};
 
 use super::config::LogServerConfig;
 use super::handlers::{
-    handle_append, handle_count, handle_list_keys, handle_metrics, handle_scan, AppState,
+    AppState, handle_append, handle_count, handle_list_keys, handle_metrics, handle_scan,
 };
 use super::metrics::Metrics;
 use super::middleware::{MetricsLayer, TracingLayer};

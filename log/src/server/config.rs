@@ -1,10 +1,10 @@
 //! Configuration for the log HTTP server.
 
 use clap::Parser;
+use common::StorageConfig;
 use common::storage::config::{
     AwsObjectStoreConfig, LocalObjectStoreConfig, ObjectStoreConfig, SlateDbStorageConfig,
 };
-use common::StorageConfig;
 
 use crate::Config;
 
@@ -124,14 +124,12 @@ mod tests {
 
         // then
         match config.storage {
-            StorageConfig::SlateDb(slate_config) => {
-                match slate_config.object_store {
-                    ObjectStoreConfig::Local(local_config) => {
-                        assert_eq!(local_config.path, "/tmp/log-data");
-                    }
-                    _ => panic!("Expected Local object store"),
+            StorageConfig::SlateDb(slate_config) => match slate_config.object_store {
+                ObjectStoreConfig::Local(local_config) => {
+                    assert_eq!(local_config.path, "/tmp/log-data");
                 }
-            }
+                _ => panic!("Expected Local object store"),
+            },
             _ => panic!("Expected SlateDb config"),
         }
     }
@@ -152,15 +150,13 @@ mod tests {
 
         // then
         match config.storage {
-            StorageConfig::SlateDb(slate_config) => {
-                match slate_config.object_store {
-                    ObjectStoreConfig::Aws(aws_config) => {
-                        assert_eq!(aws_config.bucket, "my-bucket");
-                        assert_eq!(aws_config.region, "us-west-2");
-                    }
-                    _ => panic!("Expected Aws object store"),
+            StorageConfig::SlateDb(slate_config) => match slate_config.object_store {
+                ObjectStoreConfig::Aws(aws_config) => {
+                    assert_eq!(aws_config.bucket, "my-bucket");
+                    assert_eq!(aws_config.region, "us-west-2");
                 }
-            }
+                _ => panic!("Expected Aws object store"),
+            },
             _ => panic!("Expected SlateDb config"),
         }
     }

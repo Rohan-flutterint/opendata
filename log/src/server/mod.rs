@@ -6,11 +6,11 @@
 mod config;
 mod error;
 mod handlers;
+mod http;
 mod metrics;
 mod middleware;
 mod request;
 mod response;
-mod server;
 
 pub use config::{CliArgs, LogServerConfig};
-pub use server::LogServer;
+pub use http::LogServer;
