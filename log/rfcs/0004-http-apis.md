@@ -30,22 +30,14 @@ later.
 
 ### Log HTTP Server API Summary
 
-Endpoints
-┌──────────────────────┬────────┬────────────────────────────────────────────┐
-│       Endpoint       │ Method │                Description                 │
-├──────────────────────┼────────┼────────────────────────────────────────────┤
-│ /api/v1/log/append   │ POST   │ Append records to the log                  │
-├──────────────────────┼────────┼────────────────────────────────────────────┤
-│ /api/v1/log/scan     │ GET    │ Scan entries by key and sequence range     │
-├──────────────────────┼────────┼────────────────────────────────────────────┤
-│ /api/v1/log/keys     │ GET    │ List distinct keys within a segment range  │
-├──────────────────────┼────────┼────────────────────────────────────────────┤
-│ /api/v1/log/segments │ GET    │ List segments overlapping a sequence range │
-├──────────────────────┼────────┼────────────────────────────────────────────┤
-│ /api/v1/log/count    │ GET    │ Count entries for a key                    │
-├──────────────────────┼────────┼────────────────────────────────────────────┤
-│ /metrics             │ GET    │ Prometheus metrics                         │
-└──────────────────────┴────────┴────────────────────────────────────────────┘
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/log/append` | POST | Append records to the log |
+| `/api/v1/log/scan` | GET | Scan entries by key and sequence range |
+| `/api/v1/log/keys` | GET | List distinct keys within a segment range |
+| `/api/v1/log/segments` | GET | List segments overlapping a sequence range |
+| `/api/v1/log/count` | GET | Count entries for a key |
+| `/metrics` | GET | Prometheus metrics |
 
 ### APIs 
 
@@ -76,17 +68,13 @@ Response:
 Scan entries for a specific key within a sequence range.
 
 Query Parameters:
-┌───────────┬────────┬──────────┬─────────────────────────────────────────────┐
-│   Param   │  Type  │ Required │                 Description                 │
-├───────────┼────────┼──────────┼─────────────────────────────────────────────┤
-│ key       │ string │ yes      │ Key to scan                                 │
-├───────────┼────────┼──────────┼─────────────────────────────────────────────┤
-│ start_seq │ u64    │ no       │ Start sequence (inclusive), default: 0      │
-├───────────┼────────┼──────────┼─────────────────────────────────────────────┤
-│ end_seq   │ u64    │ no       │ End sequence (exclusive), default: u64::MAX │
-├───────────┼────────┼──────────┼─────────────────────────────────────────────┤
-│ limit     │ usize  │ no       │ Max entries to return, default: 1000        │
-└───────────┴────────┴──────────┴─────────────────────────────────────────────┘
+
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| key | string | yes | Key to scan |
+| start_seq | u64 | no | Start sequence (inclusive), default: 0 |
+| end_seq | u64 | no | End sequence (exclusive), default: u64::MAX |
+| limit | usize | no | Max entries to return, default: 1000 |
 
 Response:
 
@@ -100,89 +88,94 @@ Response:
 ```
 
 
-  ---
-GET /api/v1/log/segments
+---
+
+#### Segments
+
+`GET /api/v1/log/segments`
 
 List segments overlapping a sequence range. Use this to discover segment boundaries before calling /keys.
 
 Query Parameters:
-┌───────────┬──────┬──────────┬─────────────────────────────────────────────┐
-│   Param   │ Type │ Required │                 Description                 │
-├───────────┼──────┼──────────┼─────────────────────────────────────────────┤
-│ start_seq │ u64  │ no       │ Start sequence (inclusive), default: 0      │
-├───────────┼──────┼──────────┼─────────────────────────────────────────────┤
-│ end_seq   │ u64  │ no       │ End sequence (exclusive), default: u64::MAX │
-└───────────┴──────┴──────────┴─────────────────────────────────────────────┘
-Response:
-{
-"status": "success",
-"segments": [
-{ "id": 0, "start_seq": 0, "start_time_ms": 1705766400000 },
-{ "id": 1, "start_seq": 100, "start_time_ms": 1705766460000 }
-]
-}
 
-  ---
-GET /api/v1/log/keys
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| start_seq | u64 | no | Start sequence (inclusive), default: 0 |
+| end_seq | u64 | no | End sequence (exclusive), default: u64::MAX |
+
+Response:
+
+```json
+{
+  "status": "success",
+  "segments": [
+    { "id": 0, "start_seq": 0, "start_time_ms": 1705766400000 },
+    { "id": 1, "start_seq": 100, "start_time_ms": 1705766460000 }
+  ]
+}
+```
+
+---
+
+#### Keys
+
+`GET /api/v1/log/keys`
 
 List distinct keys within a segment range.
 
 Query Parameters:
-┌───────────────┬───────┬──────────┬───────────────────────────────────────────────┐
-│     Param     │ Type  │ Required │                  Description                  │
-├───────────────┼───────┼──────────┼───────────────────────────────────────────────┤
-│ start_segment │ u32   │ no       │ Start segment ID (inclusive), default: 0      │
-├───────────────┼───────┼──────────┼───────────────────────────────────────────────┤
-│ end_segment   │ u32   │ no       │ End segment ID (exclusive), default: u32::MAX │
-├───────────────┼───────┼──────────┼───────────────────────────────────────────────┤
-│ limit         │ usize │ no       │ Max keys to return, default: 1000             │
-└───────────────┴───────┴──────────┴───────────────────────────────────────────────┘
-Response:
-{
-"status": "success",
-"keys": [
-{ "key": "events" },
-{ "key": "orders" }
-]
-}
 
-  ---
-GET /api/v1/log/count
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| start_segment | u32 | no | Start segment ID (inclusive), default: 0 |
+| end_segment | u32 | no | End segment ID (exclusive), default: u32::MAX |
+| limit | usize | no | Max keys to return, default: 1000 |
+
+Response:
+
+```json
+{
+  "status": "success",
+  "keys": [
+    { "key": "events" },
+    { "key": "orders" }
+  ]
+}
+```
+
+---
+
+#### Count
+
+`GET /api/v1/log/count`
 
 Count entries for a key within a sequence range.
 
 Query Parameters:
-┌───────────┬────────┬──────────┬─────────────────────────────────────────────┐
-│   Param   │  Type  │ Required │                 Description                 │
-├───────────┼────────┼──────────┼─────────────────────────────────────────────┤
-│ key       │ string │ yes      │ Key to count                                │
-├───────────┼────────┼──────────┼─────────────────────────────────────────────┤
-│ start_seq │ u64    │ no       │ Start sequence (inclusive), default: 0      │
-├───────────┼────────┼──────────┼─────────────────────────────────────────────┤
-│ end_seq   │ u64    │ no       │ End sequence (exclusive), default: u64::MAX │
-└───────────┴────────┴──────────┴─────────────────────────────────────────────┘
+
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| key | string | yes | Key to count |
+| start_seq | u64 | no | Start sequence (inclusive), default: 0 |
+| end_seq | u64 | no | End sequence (exclusive), default: u64::MAX |
+
 Response:
+
+```json
 { "status": "success", "count": 42 }
-
-
-
-```rust
-// Example code blocks for API proposals
-struct Example {
-    field: Type,
-}
 ```
 
 ## Alternatives
 
-What other approaches were considered? Why were they rejected? This helps
-readers understand the design space and the reasoning behind the chosen
-approach.
+### Supporting binary protocols and payloads
+
+We should support binary APIs and protocols in the future, but they can complement the HTTP API. Similarly support
+for a non json payloads within the HTTP protocol can be added as a future extension. 
+
 
 ## Open Questions
 
-Optional section for unresolved questions that need input during the review
-process.
+   * The proposal as presented mimics the Rust API for OpenData-Log. Should we consider APIs that are more HTTP-native? 
 
 ## Updates
 
